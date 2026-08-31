@@ -1,0 +1,23 @@
+[security_extensions.audit_example]
+entrypoint = "security_extensions.simple_example.audit_security_extension:AuditSecurityExtension"
+
+[entities.claude]
+host = "127.0.0.1"
+port = 8011
+endpoint = "http://127.0.0.1:8011/nlip"
+
+[entities.claude.security]
+ingress = ["audit_example"]
+egress = ["audit_example"]
+
+[entities.langchain]
+host = "127.0.0.1"
+port = 8012
+endpoint = "http://127.0.0.1:8012/nlip"
+
+[entities.langchain.security]
+ingress = ["audit_example"]
+egress = ["audit_example"]
+
+[user]
+default_target = "claude"

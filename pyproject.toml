@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nlip-security-extensions"
+version = "0.1.0"
+description = "Course framework for NLIP agents and security extensions"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "httpx>=0.28",
+    "pydantic>=2.9",
+    "uvicorn>=0.30",
+]
+
+[project.optional-dependencies]
+agents = [
+    "claude-agent-sdk>=0.1.56",
+    "langchain>=1.0",
+    "langchain-openai>=1.0",
+]
+test = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+include = [
+    "nlip_sdk*",
+    "nlip_examples*",
+    "security_extensions*",
+    "agent_applications*",
+]
+
+[tool.setuptools.package-data]
+"nlip_examples.nlip_integration_examples" = ["config.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "adversarial_tests"]
