@@ -1,0 +1,162 @@
+[
+  {
+    "id": "hp-001",
+    "title": "Aurora ANC Wireless Headphones",
+    "category": "headphones",
+    "price": 129.99,
+    "description": "Over-ear, active noise cancelling, 35h battery, USB-C.",
+    "url": "https://shop.example/products/hp-001"
+  },
+  {
+    "id": "hp-002",
+    "title": "Pulse Lite On-Ear Headphones",
+    "category": "headphones",
+    "price": 39.99,
+    "description": "Lightweight on-ear, wired and Bluetooth, foldable.",
+    "url": "https://shop.example/products/hp-002"
+  },
+  {
+    "id": "hp-003",
+    "title": "Studio Reference Monitor Headphones",
+    "category": "headphones",
+    "price": 89.0,
+    "description": "Closed-back studio headphones, detachable cable.",
+    "url": "https://shop.example/products/hp-003"
+  },
+  {
+    "id": "hp-004",
+    "title": "QuietWave Pro ANC Earbuds",
+    "category": "headphones",
+    "price": 149.0,
+    "description": "True wireless earbuds, adaptive noise cancelling, IPX4.",
+    "url": "https://shop.example/products/hp-004"
+  },
+  {
+    "id": "hp-005",
+    "title": "Summit Premium ANC Headphones",
+    "category": "headphones",
+    "price": 349.0,
+    "description": "Flagship noise cancelling, spatial audio, 30h battery.",
+    "url": "https://shop.example/products/hp-005"
+  },
+  {
+    "id": "kb-001",
+    "title": "Keystone 75% Mechanical Keyboard",
+    "category": "keyboards",
+    "price": 99.0,
+    "description": "Hot-swap switches, aluminium case, RGB.",
+    "url": "https://shop.example/products/kb-001"
+  },
+  {
+    "id": "kb-002",
+    "title": "TypeLite Low-Profile Wireless Keyboard",
+    "category": "keyboards",
+    "price": 59.99,
+    "description": "Slim, multi-device Bluetooth, rechargeable.",
+    "url": "https://shop.example/products/kb-002"
+  },
+  {
+    "id": "kb-003",
+    "title": "ErgoSplit Ergonomic Keyboard",
+    "category": "keyboards",
+    "price": 179.0,
+    "description": "Split tented layout, programmable keys.",
+    "url": "https://shop.example/products/kb-003"
+  },
+  {
+    "id": "bp-001",
+    "title": "Transit 20L Commuter Backpack",
+    "category": "backpacks",
+    "price": 74.5,
+    "description": "Water-resistant, padded 16-inch laptop sleeve.",
+    "url": "https://shop.example/products/bp-001"
+  },
+  {
+    "id": "bp-002",
+    "title": "Trailhead 35L Hiking Pack",
+    "category": "backpacks",
+    "price": 119.0,
+    "description": "Ventilated back panel, rain cover included.",
+    "url": "https://shop.example/products/bp-002"
+  },
+  {
+    "id": "bp-003",
+    "title": "Nomad Carry-On Travel Backpack",
+    "category": "backpacks",
+    "price": 189.0,
+    "description": "40L clamshell opening, airline carry-on size.",
+    "url": "https://shop.example/products/bp-003"
+  },
+  {
+    "id": "cg-001",
+    "title": "Burr Coffee Grinder Classic",
+    "category": "coffee",
+    "price": 45.0,
+    "description": "Conical burr, 18 grind settings.",
+    "url": "https://shop.example/products/cg-001"
+  },
+  {
+    "id": "cg-002",
+    "title": "Precision Espresso Grinder",
+    "category": "coffee",
+    "price": 229.0,
+    "description": "Stepless adjustment, single dosing, low retention.",
+    "url": "https://shop.example/products/cg-002"
+  },
+  {
+    "id": "cg-003",
+    "title": "Pour-Over Starter Kit",
+    "category": "coffee",
+    "price": 32.0,
+    "description": "Glass dripper, 100 filters, gooseneck kettle not included.",
+    "url": "https://shop.example/products/cg-003"
+  },
+  {
+    "id": "mn-001",
+    "title": "ClearView 27-inch 4K Monitor",
+    "category": "monitors",
+    "price": 279.0,
+    "description": "IPS, USB-C 65W power delivery, height adjustable.",
+    "url": "https://shop.example/products/mn-001"
+  },
+  {
+    "id": "mn-002",
+    "title": "SwiftFrame 24-inch 165Hz Monitor",
+    "category": "monitors",
+    "price": 159.0,
+    "description": "1080p gaming monitor, 1ms response.",
+    "url": "https://shop.example/products/mn-002"
+  },
+  {
+    "id": "ch-001",
+    "title": "VoltDock 65W GaN Charger",
+    "category": "chargers",
+    "price": 35.99,
+    "description": "Two USB-C and one USB-A port, foldable plug.",
+    "url": "https://shop.example/products/ch-001"
+  },
+  {
+    "id": "ch-002",
+    "title": "PowerCell 20000mAh Power Bank",
+    "category": "chargers",
+    "price": 49.99,
+    "description": "USB-C PD 30W, charges a laptop.",
+    "url": "https://shop.example/products/ch-002"
+  },
+  {
+    "id": "ch-003",
+    "title": "Desk Hub 7-in-1 USB-C Dock",
+    "category": "chargers",
+    "price": 69.0,
+    "description": "HDMI 4K60, Ethernet, SD reader, 100W passthrough.",
+    "url": "https://shop.example/products/ch-003"
+  },
+  {
+    "id": "ls-001",
+    "title": "Glow Adjustable LED Desk Lamp",
+    "category": "lighting",
+    "price": 42.0,
+    "description": "Five colour temperatures, USB charging port.",
+    "url": "https://shop.example/products/ls-001"
+  }
+]

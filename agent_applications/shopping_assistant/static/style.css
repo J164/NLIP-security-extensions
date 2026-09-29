@@ -1,0 +1,83 @@
+:root {
+  --bg: #f7f7f5;
+  --fg: #1d1d1b;
+  --muted: #6b6b66;
+  --card: #ffffff;
+  --border: #deded8;
+  --accent: #2f5bd3;
+  --user: #e8eefc;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1b1a;
+    --fg: #ececea;
+    --muted: #a3a39d;
+    --card: #262625;
+    --border: #3a3a38;
+    --accent: #7d9cf0;
+    --user: #2c3550;
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font: 15px/1.5 system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+}
+header, main { max-width: 48rem; margin: 0 auto; padding: 1rem; }
+header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+h1 { font-size: 1.2rem; margin: 0; }
+a { color: var(--accent); }
+.muted { color: var(--muted); font-size: 0.9rem; }
+#log { display: flex; flex-direction: column; gap: 0.6rem; margin: 1rem 0; }
+.msg {
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.msg.user { background: var(--user); align-self: flex-end; max-width: 85%; }
+.msg.error { border-color: #c0392b; }
+.msg .trace { color: var(--muted); font-size: 0.8rem; margin-top: 0.4rem; }
+#pending {
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 1rem;
+}
+form { display: flex; gap: 0.5rem; }
+input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--fg);
+  font: inherit;
+}
+button, .button {
+  padding: 0.6rem 1rem;
+  border: 0;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+button.secondary { background: var(--muted); }
+button:disabled { opacity: 0.6; cursor: wait; }
+pre {
+  overflow-x: auto;
+  font-size: 0.8rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 0.6rem;
+}

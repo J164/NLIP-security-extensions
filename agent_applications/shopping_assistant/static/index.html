@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NLIP Shopping Assistant</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>NLIP Shopping Assistant</h1>
+    <div id="account"></div>
+  </header>
+
+  <main>
+    <section id="signed-out" hidden>
+      <p>Sign in to chat with your shopping assistant.</p>
+      <a class="button" href="/login" id="login-link">Sign in</a>
+    </section>
+
+    <section id="chat" hidden>
+      <p id="scope" class="muted"></p>
+      <div id="log" aria-live="polite"></div>
+      <div id="pending" hidden>
+        <p id="pending-text"></p>
+        <button id="confirm">Confirm purchase</button>
+        <button id="cancel" class="secondary">Cancel</button>
+      </div>
+      <form id="composer">
+        <input id="prompt" autocomplete="off"
+               placeholder="e.g. Find noise-cancelling headphones under $150 and check reviews">
+        <button type="submit">Send</button>
+      </form>
+      <details>
+        <summary>Last NLIP exchange</summary>
+        <pre id="wire"></pre>
+      </details>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

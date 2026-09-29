@@ -1,0 +1,83 @@
+# NLIP shopping assistant: four entities speaking NLIP over HTTP (ECMA-431).
+# Security extensions are defined here but none are enabled yet (Phase 1 baseline).
+
+[security_extensions.audit_example]
+entrypoint = "security_extensions.simple_example.audit_security_extension:AuditSecurityExtension"
+
+# The orchestrator also serves the web UI and the OAuth login routes.
+[entities.orchestrator]
+host = "127.0.0.1"
+port = 8000
+endpoint = "http://127.0.0.1:8000/nlip"
+# Tool-boundary (Type-3) guards invoked around the orchestrator's tool calls.
+tool_guards = []
+
+[entities.orchestrator.security]
+ingress = []
+egress = []
+
+[entities.search_agent]
+host = "127.0.0.1"
+port = 8001
+endpoint = "http://127.0.0.1:8001/nlip"
+
+[entities.search_agent.security]
+ingress = []
+egress = []
+
+[entities.review_agent]
+host = "127.0.0.1"
+port = 8002
+endpoint = "http://127.0.0.1:8002/nlip"
+
+[entities.review_agent.security]
+ingress = []
+egress = []
+
+[entities.checkout_agent]
+host = "127.0.0.1"
+port = 8003
+endpoint = "http://127.0.0.1:8003/nlip"
+
+[entities.checkout_agent.security]
+ingress = []
+egress = []
+
+# Definitions for [entities.orchestrator].tool_guards, same `module:Class` shape as SEs.
+[tool_guards]
+
+# OpenAI-compatible chat endpoint. Defaults to Jetstream2's hosted models, which need no key.
+# Overrides: SHOP_LLM_BASE_URL, SHOP_LLM_MODEL, and the env var named by api_key_env.
+[llm]
+base_url = "https://llm.jetstream-cloud.org/llama-4-scout/v1"
+model = "llama-4-scout"
+api_key_env = "SHOP_LLM_API_KEY"
+default_api_key = "empty"
+temperature = 0.0
+
+# provider = "mock" (no external dependency) or "google" (needs GOOGLE_CLIENT_ID and
+# GOOGLE_CLIENT_SECRET). Override with AUTH_PROVIDER.
+[auth]
+provider = "mock"
+redirect_uri = "http://localhost:8000/auth/callback"
+ticket_ttl_seconds = 28800
+
+# User scope granted at login. Keyed by the verified email from the identity provider.
+[policy.default_scope]
+max_purchase = 100.0
+auto_confirm_under = 25.0
+
+[policy.users."alice@example.com"]
+max_purchase = 300.0
+auto_confirm_under = 50.0
+
+[policy.users."bob@example.com"]
+max_purchase = 60.0
+auto_confirm_under = 20.0
+
+# Identities offered by the mock identity provider.
+[mock_users."alice@example.com"]
+name = "Alice Example"
+
+[mock_users."bob@example.com"]
+name = "Bob Example"

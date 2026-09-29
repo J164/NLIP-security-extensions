@@ -1,0 +1,492 @@
+{
+  "hp-001": [
+    {
+      "reviewer": "user940",
+      "rating": 4,
+      "text": "Exactly as described."
+    },
+    {
+      "reviewer": "user196",
+      "rating": 4,
+      "text": "Battery lasts forever."
+    },
+    {
+      "reviewer": "user319",
+      "rating": 2,
+      "text": "Stopped working after a month."
+    },
+    {
+      "reviewer": "user188",
+      "rating": 3,
+      "text": "Customer support was slow."
+    },
+    {
+      "reviewer": "user664",
+      "rating": 3,
+      "text": "Customer support was slow."
+    }
+  ],
+  "hp-002": [
+    {
+      "reviewer": "user226",
+      "rating": 5,
+      "text": "Comfortable for long sessions."
+    },
+    {
+      "reviewer": "user163",
+      "rating": 4,
+      "text": "Exactly as described."
+    },
+    {
+      "reviewer": "user699",
+      "rating": 4,
+      "text": "Solid build quality."
+    }
+  ],
+  "hp-003": [
+    {
+      "reviewer": "user396",
+      "rating": 5,
+      "text": "Solid build quality."
+    },
+    {
+      "reviewer": "user247",
+      "rating": 4,
+      "text": "Exactly as described."
+    },
+    {
+      "reviewer": "user935",
+      "rating": 4,
+      "text": "Setup took two minutes."
+    }
+  ],
+  "hp-004": [
+    {
+      "reviewer": "user695",
+      "rating": 4,
+      "text": "Exactly as described."
+    },
+    {
+      "reviewer": "user660",
+      "rating": 3,
+      "text": "Stopped working after a month."
+    },
+    {
+      "reviewer": "user677",
+      "rating": 3,
+      "text": "Stopped working after a month."
+    },
+    {
+      "reviewer": "user644",
+      "rating": 3,
+      "text": "Customer support was slow."
+    }
+  ],
+  "hp-005": [
+    {
+      "reviewer": "user699",
+      "rating": 4,
+      "text": "Solid build quality."
+    },
+    {
+      "reviewer": "user284",
+      "rating": 4,
+      "text": "Setup took two minutes."
+    },
+    {
+      "reviewer": "user898",
+      "rating": 5,
+      "text": "Comfortable for long sessions."
+    },
+    {
+      "reviewer": "user606",
+      "rating": 5,
+      "text": "Battery lasts forever."
+    },
+    {
+      "reviewer": "user846",
+      "rating": 5,
+      "text": "Solid build quality."
+    }
+  ],
+  "kb-001": [
+    {
+      "reviewer": "user528",
+      "rating": 5,
+      "text": "Comfortable for long sessions."
+    },
+    {
+      "reviewer": "user875",
+      "rating": 5,
+      "text": "Battery lasts forever."
+    },
+    {
+      "reviewer": "user140",
+      "rating": 5,
+      "text": "Setup took two minutes."
+    },
+    {
+      "reviewer": "user179",
+      "rating": 5,
+      "text": "Would buy again."
+    },
+    {
+      "reviewer": "user937",
+      "rating": 3,
+      "text": "App is buggy."
+    }
+  ],
+  "kb-002": [
+    {
+      "reviewer": "user708",
+      "rating": 4,
+      "text": "Solid build quality."
+    },
+    {
+      "reviewer": "user960",
+      "rating": 3,
+      "text": "Stopped working after a month."
+    },
+    {
+      "reviewer": "user376",
+      "rating": 4,
+      "text": "Solid build quality."
+    },
+    {
+      "reviewer": "user848",
+      "rating": 4,
+      "text": "Setup took two minutes."
+    },
+    {
+      "reviewer": "user417",
+      "rating": 4,
+      "text": "Setup took two minutes."
+    }
+  ],
+  "kb-003": [
+    {
+      "reviewer": "user455",
+      "rating": 4,
+      "text": "Great sound for the price."
+    },
+    {
+      "reviewer": "user572",
+      "rating": 3,
+      "text": "App is buggy."
+    },
+    {
+      "reviewer": "user160",
+      "rating": 4,
+      "text": "Comfortable for long sessions."
+    },
+    {
+      "reviewer": "user886",
+      "rating": 5,
+      "text": "Battery lasts forever."
+    },
+    {
+      "reviewer": "user500",
+      "rating": 5,
+      "text": "Would buy again."
+    },
+    {
+      "reviewer": "user608",
+      "rating": 5,
+      "text": "Great sound for the price."
+    }
+  ],
+  "bp-001": [
+    {
+      "reviewer": "user240",
+      "rating": 4,
+      "text": "Would buy again."
+    },
+    {
+      "reviewer": "user540",
+      "rating": 5,
+      "text": "Would buy again."
+    },
+    {
+      "reviewer": "user467",
+      "rating": 3,
+      "text": "Customer support was slow."
+    },
+    {
+      "reviewer": "user336",
+      "rating": 4,
+      "text": "Comfortable for long sessions."
+    }
+  ],
+  "bp-002": [
+    {
+      "reviewer": "user112",
+      "rating": 5,
+      "text": "Solid build quality."
+    },
+    {
+      "reviewer": "user951",
+      "rating": 5,
+      "text": "Exactly as described."
+    },
+    {
+      "reviewer": "user249",
+      "rating": 4,
+      "text": "Solid build quality."
+    }
+  ],
+  "bp-003": [
+    {
+      "reviewer": "user679",
+      "rating": 5,
+      "text": "Battery lasts forever."
+    },
+    {
+      "reviewer": "user627",
+      "rating": 5,
+      "text": "Exactly as described."
+    },
+    {
+      "reviewer": "user770",
+      "rating": 4,
+      "text": "Setup took two minutes."
+    },
+    {
+      "reviewer": "user991",
+      "rating": 5,
+      "text": "Would buy again."
+    },
+    {
+      "reviewer": "user995",
+      "rating": 4,
+      "text": "Setup took two minutes."
+    }
+  ],
+  "cg-001": [
+    {
+      "reviewer": "user749",
+      "rating": 4,
+      "text": "Solid build quality."
+    },
+    {
+      "reviewer": "user163",
+      "rating": 5,
+      "text": "Comfortable for long sessions."
+    },
+    {
+      "reviewer": "user266",
+      "rating": 5,
+      "text": "Great sound for the price."
+    },
+    {
+      "reviewer": "user448",
+      "rating": 5,
+      "text": "Exactly as described."
+    },
+    {
+      "reviewer": "user254",
+      "rating": 5,
+      "text": "Exactly as described."
+    },
+    {
+      "reviewer": "user203",
+      "rating": 5,
+      "text": "Battery lasts forever."
+    }
+  ],
+  "cg-002": [
+    {
+      "reviewer": "user252",
+      "rating": 4,
+      "text": "Setup took two minutes."
+    },
+    {
+      "reviewer": "user358",
+      "rating": 3,
+      "text": "App is buggy."
+    },
+    {
+      "reviewer": "user218",
+      "rating": 3,
+      "text": "Customer support was slow."
+    }
+  ],
+  "cg-003": [
+    {
+      "reviewer": "user595",
+      "rating": 4,
+      "text": "Battery lasts forever."
+    },
+    {
+      "reviewer": "user450",
+      "rating": 5,
+      "text": "Setup took two minutes."
+    },
+    {
+      "reviewer": "user371",
+      "rating": 5,
+      "text": "Solid build quality."
+    },
+    {
+      "reviewer": "user123",
+      "rating": 5,
+      "text": "Comfortable for long sessions."
+    },
+    {
+      "reviewer": "user640",
+      "rating": 4,
+      "text": "Battery lasts forever."
+    },
+    {
+      "reviewer": "user127",
+      "rating": 5,
+      "text": "Would buy again."
+    }
+  ],
+  "mn-001": [
+    {
+      "reviewer": "user812",
+      "rating": 4,
+      "text": "Would buy again."
+    },
+    {
+      "reviewer": "user271",
+      "rating": 3,
+      "text": "App is buggy."
+    },
+    {
+      "reviewer": "user890",
+      "rating": 4,
+      "text": "Comfortable for long sessions."
+    },
+    {
+      "reviewer": "user437",
+      "rating": 2,
+      "text": "Too tight after an hour."
+    },
+    {
+      "reviewer": "user727",
+      "rating": 3,
+      "text": "Too tight after an hour."
+    }
+  ],
+  "mn-002": [
+    {
+      "reviewer": "user630",
+      "rating": 4,
+      "text": "Solid build quality."
+    },
+    {
+      "reviewer": "user464",
+      "rating": 4,
+      "text": "Setup took two minutes."
+    },
+    {
+      "reviewer": "user386",
+      "rating": 5,
+      "text": "Solid build quality."
+    },
+    {
+      "reviewer": "user365",
+      "rating": 5,
+      "text": "Comfortable for long sessions."
+    }
+  ],
+  "ch-001": [
+    {
+      "reviewer": "user457",
+      "rating": 5,
+      "text": "Battery lasts forever."
+    },
+    {
+      "reviewer": "user182",
+      "rating": 3,
+      "text": "Too tight after an hour."
+    },
+    {
+      "reviewer": "user445",
+      "rating": 5,
+      "text": "Comfortable for long sessions."
+    },
+    {
+      "reviewer": "user594",
+      "rating": 5,
+      "text": "Exactly as described."
+    },
+    {
+      "reviewer": "user101",
+      "rating": 5,
+      "text": "Solid build quality."
+    }
+  ],
+  "ch-002": [
+    {
+      "reviewer": "user954",
+      "rating": 3,
+      "text": "Stopped working after a month."
+    },
+    {
+      "reviewer": "user868",
+      "rating": 5,
+      "text": "Comfortable for long sessions."
+    },
+    {
+      "reviewer": "user589",
+      "rating": 3,
+      "text": "Too tight after an hour."
+    },
+    {
+      "reviewer": "user188",
+      "rating": 2,
+      "text": "Customer support was slow."
+    },
+    {
+      "reviewer": "user574",
+      "rating": 4,
+      "text": "Solid build quality."
+    }
+  ],
+  "ch-003": [
+    {
+      "reviewer": "user254",
+      "rating": 4,
+      "text": "Exactly as described."
+    },
+    {
+      "reviewer": "user576",
+      "rating": 4,
+      "text": "Would buy again."
+    },
+    {
+      "reviewer": "user710",
+      "rating": 3,
+      "text": "Customer support was slow."
+    }
+  ],
+  "ls-001": [
+    {
+      "reviewer": "user661",
+      "rating": 3,
+      "text": "Smaller than expected."
+    },
+    {
+      "reviewer": "user843",
+      "rating": 4,
+      "text": "Setup took two minutes."
+    },
+    {
+      "reviewer": "user205",
+      "rating": 4,
+      "text": "Exactly as described."
+    },
+    {
+      "reviewer": "user992",
+      "rating": 4,
+      "text": "Comfortable for long sessions."
+    },
+    {
+      "reviewer": "user945",
+      "rating": 3,
+      "text": "Too tight after an hour."
+    }
+  ]
+}
