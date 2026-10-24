@@ -137,12 +137,12 @@ class Orchestrator(NLIPServer):
         conversation.trace.append({"destination": destination, "merged_fields": merged})
         return response
 
-    async def _commit(self, conversation: Conversation, session_id: str) -> str:
+    async def _commit(
+        self, conversation: Conversation, session_id: str, lines: list[dict[str, Any]]
+    ) -> str:
+        """Commit exactly these order lines, then clear the quote."""
         state = conversation.state
-        items = [
-            {"product_id": line["product_id"], "quantity": line["quantity"]}
-            for line in (state.cart_total or {}).get("items", [])
-        ]
+        items = [{"product_id": line["product_id"], "quantity": line["quantity"]} for line in lines]
         response = await self._call_agent(
             conversation,
             session_id,
@@ -155,9 +155,11 @@ class Orchestrator(NLIPServer):
         return response.extract_text(language=None) or "Order submitted."
 
     async def _confirm(self, conversation: Conversation, session_id: str) -> str:
-        if conversation.state.pending_order is None:
+        pending = conversation.state.pending_order
+        if pending is None:
             return "There is no order awaiting confirmation."
-        return await self._commit(conversation, session_id)
+        # Commit what the user was shown and confirmed, not whatever cart_total holds now.
+        return await self._commit(conversation, session_id, pending.get("items", []))
 
     async def _guarded(
         self,
@@ -250,7 +252,7 @@ class Orchestrator(NLIPServer):
                         f"The order of ${state.cart_total.get('amount')} is awaiting the "
                         "user's confirmation. Ask the user to press Confirm in the app."
                     )
-                return await self._commit(conversation, session_id)
+                return await self._commit(conversation, session_id, state.cart_total.get("items", []))
 
             snapshot = {
                 "amount": (state.cart_total or {}).get("amount"),

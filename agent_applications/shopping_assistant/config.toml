@@ -54,6 +54,9 @@ model = "llama-4-scout"
 api_key_env = "SHOP_LLM_API_KEY"
 default_api_key = "empty"
 temperature = 0.0
+# Bounds reasoning models (e.g. muse-glimmer) and stalled requests.
+max_tokens = 4096
+timeout_seconds = 120
 
 # provider = "mock" (no external dependency) or "google" (needs GOOGLE_CLIENT_ID and
 # GOOGLE_CLIENT_SECRET). Override with AUTH_PROVIDER.

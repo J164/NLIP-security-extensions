@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from functools import cache
+from pathlib import Path
 from typing import Any
 
 from ._config import DATA_DIR
@@ -16,10 +18,25 @@ def products() -> dict[str, dict[str, Any]]:
         return {item["id"]: item for item in json.load(file)}
 
 
+def _overlay_dir() -> Path | None:
+    """Per-case content overrides used by the evaluation harness (unset in normal use)."""
+    value = os.getenv("SHOP_OVERLAY_DIR")
+    return Path(value) if value else None
+
+
 @cache
-def reviews() -> dict[str, list[dict[str, Any]]]:
+def _base_reviews() -> dict[str, list[dict[str, Any]]]:
     with (DATA_DIR / "reviews.json").open() as file:
         return json.load(file)
+
+
+def reviews() -> dict[str, list[dict[str, Any]]]:
+    overlay = _overlay_dir()
+    path = overlay / "reviews.json" if overlay else None
+    if path is None or not path.is_file():
+        return _base_reviews()
+    with path.open() as file:
+        return {**_base_reviews(), **json.load(file)}
 
 
 def search(query: str, max_price: float | None = None, limit: int = 5) -> list[dict[str, Any]]:
@@ -39,6 +56,9 @@ def search(query: str, max_price: float | None = None, limit: int = 5) -> list[d
 
 def product_page(product_id: str) -> str | None:
     """The fetched product web page. This text is third-party content, not trusted."""
+    overlay = _overlay_dir()
+    if overlay and (overlay / "pages" / f"{product_id}.txt").is_file():
+        return (overlay / "pages" / f"{product_id}.txt").read_text()
     path = DATA_DIR / "pages" / f"{product_id}.txt"
     if path.is_file():
         return path.read_text()

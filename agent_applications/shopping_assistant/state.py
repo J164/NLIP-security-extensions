@@ -46,14 +46,15 @@ class OrderState:
         self.pending_order = None
 
 
-# Labels whose content is copied into OrderState.
+# Labels whose content is copied into OrderState from subagent replies. ``user_scope`` is
+# not one of them: only the orchestrator sets it, from the OAuth login, and no subagent
+# reply legitimately carries it.
 MERGED_FIELDS = {
     protocol.PRODUCT_RESULTS,
     protocol.REVIEW_SUMMARY,
     protocol.CART_TOTAL,
     protocol.PURCHASE_AUTHORIZED,
     protocol.REQUIRES_CONFIRMATION,
-    protocol.USER_SCOPE,
 }
 
 
