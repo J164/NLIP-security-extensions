@@ -1,0 +1,22 @@
+# Overlay merged into agent_applications/shopping_assistant/config.toml for `--defense on`.
+# Tables merge key by key; lists replace the base list. The harness refuses `--defense on`
+# while this file enables no security extension or tool guard, so an undefended run can
+# never be reported as defended.
+#
+# Wk6: register the AgentSpec SE and its tool guard here, e.g.
+#
+# [security_extensions.agentspec]
+# entrypoint = "security_extensions.agentspec.extension:AgentSpecExtension"
+#
+# [entities.orchestrator.security]
+# ingress = ["agentspec"]
+#
+# [tool_guards.agentspec_guard]
+# entrypoint = "security_extensions.agentspec.guard:AgentSpecToolGuard"
+#
+# [entities.orchestrator]
+# tool_guards = ["agentspec_guard"]
+#
+# Convention the harness reads (see README): a block reason names its rule as `@rule_name`,
+# and the SE may append one JSON row per decision to $SHOP_SECURITY_LOG:
+#   {"ts", "entity", "extension", "point", "action", "rule", "reason", "ms"}

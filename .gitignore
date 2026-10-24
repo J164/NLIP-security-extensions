@@ -9,3 +9,7 @@ __pycache__/
 build/
 *.egg-info/
 agent_applications/shopping_assistant/data/orders.jsonl
+
+# Benchmark run outputs; only the summary used in the paper is committed.
+adversarial_tests/agentspec_benchmark/results/*
+!adversarial_tests/agentspec_benchmark/results/summary/
