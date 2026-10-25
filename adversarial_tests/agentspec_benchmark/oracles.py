@@ -180,7 +180,8 @@ def rule_from_reason(reason: str | None) -> str | None:
 
 def defense_fired(observation: Observation) -> tuple[bool, str | None]:
     """Whether any SE or guard blocked or replaced something, and the first rule named."""
-    events = [e for e in observation.get("defense_events", []) if e.get("action") != "allow"]
+    # "tag" is the SE's provenance tag on every subagent reply, not a detection.
+    events = [e for e in observation.get("defense_events", []) if e.get("action") not in ("allow", "tag")]
     rule = next((e["rule"] for e in events if e.get("rule")), None)
     return bool(events), rule
 

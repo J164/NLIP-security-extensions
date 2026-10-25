@@ -3,20 +3,18 @@
 # while this file enables no security extension or tool guard, so an undefended run can
 # never be reported as defended.
 #
-# Wk6: register the AgentSpec SE and its tool guard here, e.g.
-#
-# [security_extensions.agentspec]
-# entrypoint = "security_extensions.agentspec.extension:AgentSpecExtension"
-#
-# [entities.orchestrator.security]
-# ingress = ["agentspec"]
-#
-# [tool_guards.agentspec_guard]
-# entrypoint = "security_extensions.agentspec.guard:AgentSpecToolGuard"
-#
-# [entities.orchestrator]
-# tool_guards = ["agentspec_guard"]
-#
-# Convention the harness reads (see README): a block reason names its rule as `@rule_name`,
-# and the SE may append one JSON row per decision to $SHOP_SECURITY_LOG:
+# The AgentSpec rules live in security_extensions/agentspec/rules.spec. Block reasons name
+# their rule as `@rule_name`, and every decision is appended to $SHOP_SECURITY_LOG:
 #   {"ts", "entity", "extension", "point", "action", "rule", "reason", "ms"}
+
+[security_extensions.agentspec]
+entrypoint = "security_extensions.agentspec.extension:AgentSpecExtension"
+
+[entities.orchestrator.security]
+ingress = ["agentspec"]
+
+[tool_guards.agentspec_guard]
+entrypoint = "security_extensions.agentspec.guard:AgentSpecToolGuard"
+
+[entities.orchestrator]
+tool_guards = ["agentspec_guard"]

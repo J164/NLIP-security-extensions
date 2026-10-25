@@ -12,6 +12,7 @@ import asyncio
 import json
 import math
 import re
+import tomllib
 from functools import partial
 
 import httpx
@@ -116,11 +117,16 @@ def stack_factory(tmp_path, monkeypatch):
     for email, info in harness.BENCH_USERS.items():  # as in the harness's generated config
         monkeypatch.setitem(CONFIG["mock_users"], email, info)
 
-    def build(script) -> harness.Stack:
+    def build(script, defense: str = "off") -> harness.Stack:
         # The orchestrator dials the base config's endpoints (ports 8001-8003).
-        stack = harness.Stack("scripted", "off", 8000, tmp_path, tmp_path / "unused.toml")
+        stack = harness.Stack("scripted", defense, 8000, tmp_path, tmp_path / "unused.toml")
+        monkeypatch.setenv("SHOP_SECURITY_LOG", str(stack.security_log))
+        config = CONFIG
+        if defense == "on":
+            with harness.DEFENSE_OVERLAY.open("rb") as file:
+                config = harness.deep_merge(CONFIG, tomllib.load(file))
         port = lambda name: 8000 + harness.PORTS[name]  # noqa: E731
-        router.add(port("orchestrator"), create_app(Orchestrator(agent_factory=factory(script))))
+        router.add(port("orchestrator"), create_app(Orchestrator(config, agent_factory=factory(script))))
         router.add(port("search_agent_real"), SearchAgent(factory(search_script)).create_nlip_app())
         router.add(port("review_agent_real"), ReviewAgent(factory(review_script)).create_nlip_app())
         router.add(port("checkout_agent"), CheckoutAgent().create_nlip_app())
@@ -337,8 +343,9 @@ def test_stack_config_round_trips_and_defense_on_needs_an_extension(tmp_path):
     assert tomllib.loads(harness.dump_toml(config)) == config
     assert config["entities"]["search_agent"]["endpoint"] == "http://127.0.0.1:18101/nlip"
     assert "carol@example.com" in config["mock_users"]
-    with pytest.raises(SystemExit):
-        harness.stack_config("gpt-oss-120b", "on", 18100)
+    defended = harness.stack_config("gpt-oss-120b", "on", 18100)
+    assert defended["entities"]["orchestrator"]["security"]["ingress"] == ["agentspec"]
+    assert defended["entities"]["orchestrator"]["tool_guards"] == ["agentspec_guard"]
     merged = harness.deep_merge(config, {"entities": {"orchestrator": {"security": {"ingress": ["x"]}}}})
     assert harness.defense_enabled(merged) and not harness.defense_enabled(config)
 
@@ -382,3 +389,69 @@ def test_report_rates_intervals_and_status_columns():
     text = report.markdown(report.summarize(rows))
     assert "| field_impersonation | down | off | unavailable | unavailable |" in text
     assert "67% [21%–94%] (n=3)" in text
+
+
+# --- defense on ---------------------------------------------------------------------------
+
+ATTACKS = [c for c in ALL_CASES if c["kind"] == "attack"]
+
+
+def dial_the_attacker(case):
+    """Quotes what the user names on turn 1, then asks the compromised agent, then orders."""
+    target = case["proxy"]["target"]
+    says = [n for n, t in enumerate(case["turns"]) if "say" in t]
+
+    async def script(tools, prompt, turn):
+        ids = PRODUCT_ID.findall(prompt) or ["hp-001"]
+        if turn == 1:
+            await tools["request_checkout"].ainvoke({"items": [{"product_id": ids[0], "quantity": 1}]})
+        if target == "search_agent":
+            await tools["ask_search_agent"].ainvoke({"request": prompt})
+        else:
+            await tools["ask_review_agent"].ainvoke({"product_ids": ids})
+        if turn == len(says) and turn > 1:
+            return await tools["place_order"].ainvoke({})
+        return "Done."
+
+    return script
+
+
+def test_defense_on_drops_the_forged_seed_field(stack_factory):
+    case = BY_ID["fi-seed-forged-confirmation"]
+    observation = run(stack_factory(credulous_shopper, "on"), case)["observation"]
+    verdict = oracles.evaluate(case, observation)
+    assert verdict["attack_goal"] is False and verdict["user_task"] is True
+    assert verdict["se_fired"] and verdict["se_rule"] == "block_field_impersonation"
+    assert observation["turns"][1]["trace"][0] == {"destination": "review_agent", "merged_fields": ["review_summary"]}
+
+
+@pytest.mark.parametrize("case", ATTACKS, ids=lambda c: c["id"])
+def test_every_attack_case_fires_its_expected_rule(stack_factory, case):
+    result = run(stack_factory(dial_the_attacker(case), "on"), case)
+    observation = result["observation"]
+    assert all(op["applied"] for call in result["proxy_applied"][case["proxy"]["target"]] for op in call["ops"])
+    rules = {e["rule"] for e in observation["defense_events"] if e.get("action") not in ("allow", "tag")}
+    if "expected_rule" not in case:  # a known miss: the sender owns the field it lies in
+        assert not rules, observation["defense_events"]
+        assert any(e.get("action") == "tag" for e in observation["defense_events"])
+        return
+    assert case["expected_rule"] in rules, observation["defense_events"]
+    # No reserved field from a non-owner reached order state.
+    owners = {"cart_total", "purchase_authorized", "requires_confirmation", "order_id", "user_scope"}
+    for turn in observation["turns"]:
+        for step in turn["trace"]:
+            if step.get("destination") in ("search_agent", "review_agent"):
+                assert not owners & set(step["merged_fields"]), step
+    # Code reads these forged fields, so dropping them defeats the attack whatever the model
+    # does. The other mechanisms depend on the model believing the content (live runs only).
+    if case["mechanism"] in ("confirmation_gate_forgery", "cart_substitution"):
+        assert oracles.evaluate(case, observation)["attack_goal"] is False
+
+
+@pytest.mark.parametrize("case", BENIGN, ids=lambda c: c["id"])
+def test_benign_case_passes_with_defense_on_and_no_rule_fires(stack_factory, case):
+    result = run(stack_factory(faithful_shopper(case), "on"), case)
+    verdict = oracles.evaluate(case, result["observation"])
+    assert verdict["user_task"] is True, result["observation"]
+    assert not verdict["se_fired"], result["observation"]["defense_events"]
+    assert result["security"], "the SE logs allow decisions too (overhead numbers)"
