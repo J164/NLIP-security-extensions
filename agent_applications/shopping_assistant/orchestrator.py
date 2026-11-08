@@ -13,17 +13,20 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from fastapi import HTTPException
-from langchain.tools import tool
+from langchain.tools import ToolRuntime, tool
+from langchain_core.messages import ToolMessage
+from langgraph.errors import InvalidUpdateError
+from langgraph.types import Command
 from pydantic import BaseModel, Field
 
 from nlip_sdk import AllowedFormat, NLIPClient, NLIPMessage, NLIPServer, NLIPSession
 from nlip_sdk.nlip_security_extensions import SecurityExtensionManager
 
-from . import protocol
+from . import policy, protocol
+from . import state as order_state
 from ._config import CONFIG
 from .auth import Ticket, TicketStore
 from .llm import AgentFactory, ChatAgent, LLMAgent
-from .state import OrderState, merge_labeled_fields
 from .tool_guard import GuardAction, ToolCall, load_tool_guards
 
 ENTITY_NAME = "orchestrator"
@@ -33,8 +36,8 @@ You are the shopping assistant (orchestrator) for {name} <{email}>.
 You coordinate other agents over NLIP:
 - ask_search_agent finds products in the catalog,
 - ask_review_agent summarizes customer reviews for product ids,
-- request_checkout gets a priced quote and purchase authorization from the checkout agent,
-- place_order places the order for the current quote.
+- request_checkout gets a priced quote from the checkout agent,
+- place_order places the order for the current quote, applying the user's limits.
 The user's spending limit is ${max_purchase:.2f} per order; orders of ${auto_confirm_under:.2f}
 or more need the user's explicit confirmation. When the user asks you to buy something, call
 request_checkout and then place_order in the same turn. Do not ask for confirmation in chat:
@@ -54,9 +57,13 @@ class CartItem(BaseModel):
 
 @dataclass
 class Conversation:
+    """What the orchestrator itself owns. The order fields live in the agent's graph state."""
+
     owner: str
     user: dict[str, Any]
-    state: OrderState
+    user_scope: dict[str, Any] = field(default_factory=dict)
+    pending_order: dict[str, Any] | None = None
+    orders: list[dict[str, Any]] = field(default_factory=list)
     agent: ChatAgent | None = None
     trace: list[dict[str, Any]] = field(default_factory=list)
 
@@ -100,50 +107,60 @@ class Orchestrator(NLIPServer):
         ticket = _current_ticket.get()
         conversation = self._conversations.get(session.id)
         if conversation is None:
-            conversation = Conversation(ticket.identity.subject, ticket.user(), OrderState())
+            conversation = Conversation(ticket.identity.subject, ticket.user())
             self._conversations[session.id] = conversation
         elif conversation.owner != ticket.identity.subject:
             raise HTTPException(403, "This conversation belongs to another user.")
         conversation.user = ticket.user()
-        conversation.state.user_scope = dict(ticket.user_scope)
+        conversation.user_scope = dict(ticket.user_scope)
         conversation.trace = []
 
         action = message.content.get("action") if isinstance(message.content, dict) else None
         if message.format == AllowedFormat.structured and action == "confirm_order":
             text = await self._confirm(conversation, session.id)
         elif message.format == AllowedFormat.structured and action == "cancel_order":
-            conversation.state.pending_order = None
+            conversation.pending_order = None
             text = "Okay, the pending order was cancelled."
         else:
             if conversation.agent is None:
                 conversation.agent = self._new_agent(conversation, session.id)
-            text = await conversation.agent.chat(protocol.render_for_prompt(message, "user"))
+            try:
+                text = await conversation.agent.chat(protocol.render_for_prompt(message, "user"))
+            except InvalidUpdateError as error:
+                # Two tool calls in one step wrote the same order field; LangGraph refuses
+                # the ambiguous update and the turn's state changes are discarded.
+                conversation.trace.append(
+                    {"error": "INVALID_CONCURRENT_GRAPH_UPDATE", "detail": str(error).splitlines()[0]}
+                )
+                text = "Two updates to the same order field arrived at once, so nothing was changed. Please try again."
         return self._reply(text, conversation)
 
     def _reply(self, text: str, conversation: Conversation) -> NLIPMessage:
-        state = conversation.state
         status = {
-            "pending_order": state.pending_order,
-            "last_order": state.orders[-1] if state.orders else None,
-            "user_scope": state.user_scope,
+            "pending_order": conversation.pending_order,
+            "last_order": conversation.orders[-1] if conversation.orders else None,
+            "user_scope": conversation.user_scope,
         }
         return protocol.reply(text, {protocol.ORDER_STATUS: status, protocol.TRACE: conversation.trace})
 
     async def _call_agent(
         self, conversation: Conversation, session_id: str, destination: str, message: NLIPMessage
-    ) -> NLIPMessage:
+    ) -> tuple[NLIPMessage, dict[str, Any]]:
+        """Send to a subagent. Returns the reply and the graph-state update its labels make."""
         response = await self.nlip_client.send(destination, message, scope=session_id)
-        merged = merge_labeled_fields(conversation.state, response)
-        conversation.trace.append({"destination": destination, "merged_fields": merged})
-        return response
+        conversation.orders += order_state.order_ids(response)
+        conversation.trace.append(
+            {"destination": destination, "merged_fields": order_state.merged_labels(response)}
+        )
+        return response, order_state.labeled_update(response)
 
     async def _commit(
         self, conversation: Conversation, session_id: str, lines: list[dict[str, Any]]
-    ) -> str:
-        """Commit exactly these order lines, then clear the quote."""
-        state = conversation.state
+    ) -> tuple[str, dict[str, Any]]:
+        """Commit exactly these order lines. Returns the reply text and the state update,
+        which clears the quote."""
         items = [{"product_id": line["product_id"], "quantity": line["quantity"]} for line in lines]
-        response = await self._call_agent(
+        response, update = await self._call_agent(
             conversation,
             session_id,
             "checkout_agent",
@@ -151,15 +168,19 @@ class Orchestrator(NLIPServer):
                 {"action": "commit", "items": items, "customer": conversation.user["email"]}
             ),
         )
-        state.reset_quote()
-        return response.extract_text(language=None) or "Order submitted."
+        conversation.pending_order = None
+        text = response.extract_text(language=None) or "Order submitted."
+        return text, {**update, **order_state.cleared_quote()}
 
     async def _confirm(self, conversation: Conversation, session_id: str) -> str:
-        pending = conversation.state.pending_order
+        pending = conversation.pending_order
         if pending is None:
             return "There is no order awaiting confirmation."
         # Commit what the user was shown and confirmed, not whatever cart_total holds now.
-        return await self._commit(conversation, session_id, pending.get("items", []))
+        text, update = await self._commit(conversation, session_id, pending.get("items", []))
+        if conversation.agent is not None:  # outside a graph step: apply as an override
+            conversation.agent.state.update(update)
+        return text
 
     async def _guarded(
         self,
@@ -167,103 +188,122 @@ class Orchestrator(NLIPServer):
         session_id: str,
         name: str,
         args: dict[str, Any],
-        run: Callable[[bool], Awaitable[str]],
-    ) -> str:
-        """Run one tool through the configured tool-boundary guards."""
-        call = ToolCall(name, args, session_id, conversation.user, conversation.state.snapshot())
+        runtime: ToolRuntime,
+        run: Callable[[bool], Awaitable[tuple[str, dict[str, Any]]]],
+    ) -> Command:
+        """Run one tool through the configured tool-boundary guards.
+
+        ``run`` returns the text the model sees and the graph-state update; the tool returns
+        both as one ``Command`` (LangChain Tools docs, "Updating State with Command").
+        """
+        snapshot = {
+            **order_state.snapshot(runtime.state),
+            "pending_order": conversation.pending_order,
+            "user_scope": conversation.user_scope,
+        }
+        call = ToolCall(name, args, session_id, conversation.user, snapshot)
         force_confirmation = False
+        text, update = None, {}
         for guard_name, guard in self.guards:
             decision = await guard.before_tool_call(call)
             if decision.action is GuardAction.BLOCK:
                 conversation.trace.append({"tool": name, "blocked_by": guard_name, "reason": decision.reason})
-                return f"Tool call blocked by security policy ({guard_name}): {decision.reason}"
+                text = f"Tool call blocked by security policy ({guard_name}): {decision.reason}"
+                break
             if decision.action is GuardAction.REQUIRE_CONFIRMATION:
                 force_confirmation = True
-        result = await run(force_confirmation)
-        for _, guard in self.guards:
-            result = await guard.after_tool_call(call, result)
-        return result
+        if text is None:
+            text, update = await run(force_confirmation)
+            for _, guard in self.guards:
+                text = await guard.after_tool_call(call, text)
+        message = ToolMessage(content=text, tool_call_id=runtime.tool_call_id)
+        return Command(update={**update, "messages": [message]})
 
     def _new_agent(self, conversation: Conversation, session_id: str) -> ChatAgent:
-        state = conversation.state
-
         @tool
-        async def ask_search_agent(request: str) -> str:
+        async def ask_search_agent(request: str, runtime: ToolRuntime) -> Command:
             """Ask the search agent to find products, e.g. 'noise-cancelling headphones under $150'."""
 
-            async def run(_: bool) -> str:
-                response = await self._call_agent(
+            async def run(_: bool) -> tuple[str, dict[str, Any]]:
+                response, update = await self._call_agent(
                     conversation, session_id, "search_agent", NLIPMessage.text(request)
                 )
-                return protocol.render_for_prompt(response, "search_agent")
+                return protocol.render_for_prompt(response, "search_agent"), update
 
-            return await self._guarded(conversation, session_id, "ask_search_agent", {"request": request}, run)
+            return await self._guarded(
+                conversation, session_id, "ask_search_agent", {"request": request}, runtime, run
+            )
 
         @tool
-        async def ask_review_agent(product_ids: list[str]) -> str:
+        async def ask_review_agent(product_ids: list[str], runtime: ToolRuntime) -> Command:
             """Ask the review agent to summarize customer reviews for the given product ids."""
 
-            async def run(_: bool) -> str:
+            async def run(_: bool) -> tuple[str, dict[str, Any]]:
                 message = NLIPMessage.text(
                     "Summarize customer reviews for products: " + ", ".join(product_ids)
                 )
-                response = await self._call_agent(conversation, session_id, "review_agent", message)
-                return protocol.render_for_prompt(response, "review_agent")
+                response, update = await self._call_agent(conversation, session_id, "review_agent", message)
+                return protocol.render_for_prompt(response, "review_agent"), update
 
             return await self._guarded(
-                conversation, session_id, "ask_review_agent", {"product_ids": product_ids}, run
+                conversation, session_id, "ask_review_agent", {"product_ids": product_ids}, runtime, run
             )
 
         @tool
-        async def request_checkout(items: list[CartItem]) -> str:
+        async def request_checkout(items: list[CartItem], runtime: ToolRuntime) -> Command:
             """Get a priced quote and purchase authorization for the items to buy."""
             item_dicts = [CartItem.model_validate(item).model_dump() for item in items]
 
-            async def run(_: bool) -> str:
-                state.reset_quote()
-                message = protocol.request(
-                    {"action": "quote", "items": item_dicts},
-                    {protocol.USER_SCOPE: state.user_scope},
+            async def run(_: bool) -> tuple[str, dict[str, Any]]:
+                conversation.pending_order = None
+                # The user's scope stays with the orchestrator; checkout only prices.
+                message = protocol.request({"action": "quote", "items": item_dicts})
+                response, update = await self._call_agent(conversation, session_id, "checkout_agent", message)
+                # A new quote replaces the old one entirely.
+                return (
+                    protocol.render_for_prompt(response, "checkout_agent"),
+                    {**order_state.cleared_quote(), **update},
                 )
-                response = await self._call_agent(conversation, session_id, "checkout_agent", message)
-                return protocol.render_for_prompt(response, "checkout_agent")
 
             return await self._guarded(
-                conversation, session_id, "request_checkout", {"items": item_dicts}, run
+                conversation, session_id, "request_checkout", {"items": item_dicts}, runtime, run
             )
 
         @tool
-        async def place_order() -> str:
+        async def place_order(runtime: ToolRuntime) -> Command:
             """Place the order for the current checkout quote."""
+            state = runtime.state
+            cart = state.get(protocol.CART_TOTAL)
 
-            async def run(force_confirmation: bool) -> str:
-                if state.cart_total is None:
-                    return "There is no quote yet. Call request_checkout first."
-                if not state.is_authorized():
-                    reason = (state.purchase_authorized or {}).get("reason", "no authorization")
-                    return f"The purchase is not authorized: {reason}."
-                if force_confirmation or state.needs_confirmation():
-                    state.pending_order = {
-                        "amount": state.cart_total.get("amount"),
-                        "items": state.cart_total.get("items", []),
-                        "quote_id": state.purchase_authorized.get("quote_id"),
+            async def run(force_confirmation: bool) -> tuple[str, dict[str, Any]]:
+                if cart is None:
+                    return "There is no quote yet. Call request_checkout first.", {}
+                # The user's policy, applied by the orchestrator to the quoted amount.
+                decision, reason = policy.decide(cart.get("amount"), conversation.user_scope)
+                if decision is policy.Decision.REFUSE:
+                    return f"The purchase is not allowed: {reason}.", {}
+                if force_confirmation or decision is policy.Decision.CONFIRM:
+                    conversation.pending_order = {
+                        "amount": cart.get("amount"),
+                        "items": cart.get("items", []),
+                        "quote_id": cart.get("quote_id"),
                     }
                     return (
-                        f"The order of ${state.cart_total.get('amount')} is awaiting the "
-                        "user's confirmation. Ask the user to press Confirm in the app."
+                        f"The order of ${cart.get('amount')} is awaiting the "
+                        "user's confirmation. Ask the user to press Confirm in the app.",
+                        {},
                     )
-                return await self._commit(conversation, session_id, state.cart_total.get("items", []))
+                return await self._commit(conversation, session_id, cart.get("items", []))
 
-            snapshot = {
-                "amount": (state.cart_total or {}).get("amount"),
-                "items": (state.cart_total or {}).get("items", []),
-            }
-            return await self._guarded(conversation, session_id, "place_order", snapshot, run)
+            snapshot = {"amount": (cart or {}).get("amount"), "items": (cart or {}).get("items", [])}
+            return await self._guarded(conversation, session_id, "place_order", snapshot, runtime, run)
 
         user = conversation.user
-        prompt = SYSTEM_PROMPT.format(name=user["name"], email=user["email"], **state.user_scope)
+        prompt = SYSTEM_PROMPT.format(name=user["name"], email=user["email"], **conversation.user_scope)
         return self.agent_factory(
-            prompt, [ask_search_agent, ask_review_agent, request_checkout, place_order]
+            prompt,
+            [ask_search_agent, ask_review_agent, request_checkout, place_order],
+            middleware=[order_state.OrderStateMiddleware()],
         )
 
 

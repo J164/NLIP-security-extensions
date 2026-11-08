@@ -1,9 +1,14 @@
-"""Checkout agent: deterministic quoting, spending-limit check, and (mock) order commit.
+"""Checkout agent: deterministic pricing and (mock) order recording. No user policy.
 
-Requests are structured JSON: ``{"action": "quote" | "commit", "items": [...]}`` with the
-user's scope in a ``user_scope`` submessage. Commit trusts its caller, like a payment
-service trusts the storefront that holds the merchant credentials: deciding *whether* to
-buy is the orchestrator's job.
+Requests are structured JSON: ``{"action": "quote" | "commit", "items": [...]}``.
+
+- ``quote`` prices the items from the catalog and returns a ``cart_total`` with a quote id.
+- ``commit`` records an order for the given items at catalog prices.
+
+The checkout agent never sees the user's spending limits. The orchestrator owns the user's
+policy: it applies the limits from the login to the quote and decides whether to commit, ask
+for confirmation, or refuse. Commit executes an order the orchestrator has already approved,
+like a payment processor capturing a charge the storefront decided to make.
 """
 
 from __future__ import annotations
@@ -72,32 +77,15 @@ class CheckoutAgent(NLIPServer):
         return protocol.reply(f"Unknown checkout action {action!r}.")
 
     def _quote(self, message: NLIPMessage, lines: list[dict], total: float) -> NLIPMessage:
-        scope = dict(protocol.structured_fields(message)).get(protocol.USER_SCOPE) or {}
-        max_purchase = float(scope.get("max_purchase", 0))
-        auto_confirm_under = float(scope.get("auto_confirm_under", 0))
-        authorized = total <= max_purchase
-        required = total >= auto_confirm_under
         quote_id = f"q-{token_hex(4)}"
-        if authorized:
-            reason = f"${total:.2f} is within the ${max_purchase:.2f} spending limit"
-        else:
-            reason = f"${total:.2f} exceeds the ${max_purchase:.2f} spending limit"
-        text = f"Quote {quote_id}: total ${total:.2f}. Purchase {'authorized' if authorized else 'NOT authorized'}: {reason}."
-        if authorized and required:
-            text += " The user must confirm this purchase."
         return protocol.reply(
-            text,
+            f"Quote {quote_id}: total ${total:.2f}.",
             {
-                protocol.CART_TOTAL: {"amount": total, "currency": "USD", "items": lines},
-                protocol.PURCHASE_AUTHORIZED: {
-                    "authorized": authorized,
-                    "amount": total,
+                protocol.CART_TOTAL: {
                     "quote_id": quote_id,
-                    "reason": reason,
-                },
-                protocol.REQUIRES_CONFIRMATION: {
-                    "required": required,
-                    "threshold": auto_confirm_under,
+                    "amount": total,
+                    "currency": "USD",
+                    "items": lines,
                 },
             },
         )

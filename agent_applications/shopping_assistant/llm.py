@@ -6,9 +6,10 @@ import json
 import os
 import time
 from collections.abc import Callable, Sequence
-from typing import Protocol
+from typing import Any, Protocol
 
 from langchain.agents import create_agent
+from langchain.agents.middleware import AgentMiddleware
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
@@ -17,11 +18,19 @@ from ._config import CONFIG
 
 
 class ChatAgent(Protocol):
+    # The agent's graph state other than the messages (e.g. the orchestrator's order fields).
+    # It carries over between turns, and the owner may change it between turns.
+    state: dict[str, Any]
+
     async def chat(self, prompt: str) -> str: ...
 
 
-# Signature used to build an agent; tests substitute a scripted one.
-AgentFactory = Callable[[str, Sequence[BaseTool]], ChatAgent]
+# Signature used to build an agent: (system prompt, tools, middleware=...). Tests substitute
+# a scripted one.
+AgentFactory = Callable[..., ChatAgent]
+
+# Keys of LangChain's base AgentState that are not carried between turns.
+_BASE_KEYS = {"messages", "jump_to", "structured_response"}
 
 
 class LLMAgent:
@@ -31,7 +40,12 @@ class LLMAgent:
     temperature so evaluation runs are as repeatable as the model allows.
     """
 
-    def __init__(self, system_prompt: str, tools: Sequence[BaseTool] = ()) -> None:
+    def __init__(
+        self,
+        system_prompt: str,
+        tools: Sequence[BaseTool] = (),
+        middleware: Sequence[AgentMiddleware] = (),
+    ) -> None:
         settings = CONFIG["llm"]
         chat_model = ChatOpenAI(
             model=model_name(),
@@ -43,17 +57,22 @@ class LLMAgent:
             use_responses_api=False,
         )
         self._agent = create_agent(
-            model=chat_model, tools=list(tools), system_prompt=system_prompt
+            model=chat_model,
+            tools=list(tools),
+            system_prompt=system_prompt,
+            middleware=list(middleware),
         )
         self._messages: list[BaseMessage] = []
+        self.state: dict[str, Any] = {}
 
     async def chat(self, prompt: str) -> str:
         started = time.monotonic()
         seen = len(self._messages)
         result = await self._agent.ainvoke(
-            {"messages": [*self._messages, HumanMessage(content=prompt)]}
+            {**self.state, "messages": [*self._messages, HumanMessage(content=prompt)]}
         )
         self._messages = result["messages"]
+        self.state = {k: v for k, v in result.items() if k not in _BASE_KEYS}
         log_usage(self._messages[seen:], time.monotonic() - started)
         response = self._messages[-1]
         if not isinstance(response, AIMessage):

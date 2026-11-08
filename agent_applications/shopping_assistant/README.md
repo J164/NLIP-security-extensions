@@ -10,10 +10,10 @@ exploitable on purpose (see [Why this matters for agents](#why-this-matters-for-
 
 | Entity | Port | Privilege | Role |
 |---|---|---|---|
-| `orchestrator` | 8000 | high | The user's assistant (LLM). Holds the OAuth-granted `user_scope`, and is the only entity that may place orders. Also serves the web UI and login. |
+| `orchestrator` | 8000 | high | The user's assistant (LLM). Holds the OAuth-granted `user_scope`, applies it to every order (`policy.py`), and is the only entity that may place orders. Also serves the web UI and login. |
 | `search_agent` | 8001 | low | Searches the catalog (LLM + tools), reads product web pages, which are **untrusted third-party text**. |
 | `review_agent` | 8002 | low | Summarizes customer reviews (LLM + tools). |
-| `checkout_agent` | 8003 | high | Deterministic pricing, spending-limit check, mock order commit (`data/orders.jsonl`). |
+| `checkout_agent` | 8003 | high | Deterministic pricing (quotes) and mock order commit (`data/orders.jsonl`). Never sees the user's limits. |
 
 ```
 Browser (JS NLIP client) ──POST /nlip + authorization token──► orchestrator :8000
@@ -38,7 +38,7 @@ message `{"action": "confirm_order"}`.
   |---|---|
   | `product_results` | `search_agent` |
   | `review_summary` | `review_agent` |
-  | `cart_total`, `purchase_authorized`, `requires_confirmation`, `order_id` | `checkout_agent` |
+  | `cart_total` (quote id, amount, items), `order_id` | `checkout_agent` |
   | `user_scope` | `orchestrator` (from the OAuth login) |
   | `order_status`, `trace` | `orchestrator` → user client |
 
@@ -134,16 +134,43 @@ agents drive the real tools, and the subagents run in-process.
 The orchestrator is a deputy with real privileges: it can spend the user's money. It
 consumes subagent output in two realistic ways, and both are driven by labels:
 
-1. `state.merge_labeled_fields()` copies known labeled fields into the order state, and the
-   last writer wins. The `place_order` gate reads `purchase_authorized` and
-   `requires_confirmation` from that state.
+1. The order fields are keys of the orchestrator agent's LangGraph state (`state.py`,
+   declared through `OrderStateMiddleware`). Each tool that calls a subagent returns
+   `Command(update=...)` built from the reply's labels (`state.labeled_update()`), the
+   documented way for a LangChain tool to update agent state. None of the keys has a
+   reducer, so LangGraph's default applies: "all updates to that key should override it".
+   The label names the key and the last writer wins. `place_order` reads `cart_total` from
+   that state (`runtime.state`) and applies the user's scope to its amount (`policy.decide`):
+   over `max_purchase` it refuses, at or above `auto_confirm_under` it holds the order for
+   Confirm, below it commits.
+   LangGraph does reject two writes to one key in the same step
+   (`INVALID_CONCURRENT_GRAPH_UPDATE`); the orchestrator then answers that nothing was
+   changed and records it in the trace.
 2. The same fields are rendered into the LLM's prompt.
+
+The user's scope, the pending order and the order history are kept by the orchestrator
+outside the graph state, so no reply can write them. The user's scope is never sent to a
+subagent.
+
+**Policy ownership.** The orchestrator is the only entity that holds the user's scope, so it
+alone decides whether an order is allowed and whether it needs a Confirm. The checkout agent
+prices items and records orders it is told to commit, like a payment processor capturing a
+charge the storefront decided to make. The decision is plain code; the model only decides
+*when* to call `place_order`.
+
+Docs for the mechanism: LangGraph Graph API, *State › Reducers*
+(<https://docs.langchain.com/oss/python/langgraph/graph-api>); LangChain Tools, *Updating
+State with Command* (<https://docs.langchain.com/oss/python/langchain/tools>); LangChain v1
+migration guide, *Custom state* (<https://docs.langchain.com/oss/python/migrate/langchain-v1>);
+LangGraph error `INVALID_CONCURRENT_GRAPH_UPDATE`
+(<https://docs.langchain.com/oss/python/langgraph/errors/INVALID_CONCURRENT_GRAPH_UPDATE>).
 
 NLIP gives no per-submessage provenance, and any sender can use any `Label`. A low-privilege
 or compromised subagent can therefore write fields that belong to the checkout agent.
 `test_undefended_baseline_trusts_fields_forged_by_a_subagent` shows this: a search agent
-that emits `purchase_authorized` / `requires_confirmation` / `cart_total` gets a **$349
-order placed for Bob, whose limit is $60, with no confirmation**. This is a confused-deputy
+that emits a `cart_total` for a $349 product stated as $15.00 gets the orchestrator's own
+policy to approve it, and checkout charges the real price: a **$349 order placed for Bob,
+whose limit is $60, with no confirmation**. The policy code is correct; its input is not. This is a confused-deputy
 attack of the kind ECMA-434 §7.2.3 describes. The attacker never touches the user's
 credentials. It relies only on the orchestrator trusting what it reads.
 

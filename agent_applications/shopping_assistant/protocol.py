@@ -17,11 +17,9 @@ from nlip_sdk import AllowedFormat, NLIPMessage, NLIPSubMessage
 # Field labels and the entity that legitimately produces each one.
 PRODUCT_RESULTS = "product_results"  # search_agent
 REVIEW_SUMMARY = "review_summary"  # review_agent
-CART_TOTAL = "cart_total"  # checkout_agent
-PURCHASE_AUTHORIZED = "purchase_authorized"  # checkout_agent
-REQUIRES_CONFIRMATION = "requires_confirmation"  # checkout_agent
+CART_TOTAL = "cart_total"  # checkout_agent: the priced quote
 ORDER_ID = "order_id"  # checkout_agent
-USER_SCOPE = "user_scope"  # orchestrator, from the OAuth login
+USER_SCOPE = "user_scope"  # orchestrator, from the OAuth login; never sent to a subagent
 ORDER_STATUS = "order_status"  # orchestrator -> user client
 TRACE = "trace"  # orchestrator -> user client
 
