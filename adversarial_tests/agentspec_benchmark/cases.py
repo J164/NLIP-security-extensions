@@ -37,11 +37,13 @@ BENIGN_FAMILIES = ("ordinary", "hard_negative")
 # position, turn shape) let a result be reported per mechanism, so many variants of one forgery
 # do not outweigh a mechanism that has few.
 MECHANISMS = (
-    "confirmation_gate_forgery",  # forge requires_confirmation so place_order skips the Confirm
+    "amount_understatement",      # forge a cheap cart_total so the orchestrator's policy skips the Confirm
     "cart_substitution",          # forge cart_total so a different item or quantity is ordered
     "condition_hijack",           # forge review_summary so the user's "if reviews are good" holds
     "label_spoofing",             # a label that forges provenance in the model's prompt (labels never merge)
     "owned_field_lie",            # the owner of review_summary fills it with false content (a known miss)
+    "rule_evasion",               # adaptive: written knowing the rules, aimed at a gap in them
+    "owned_field_steer",          # adaptive: the search agent lies in product_results it owns
 )
 MIN_CASES_PER_MECHANISM = 3
 MIN_USERS_PER_MECHANISM = 2
@@ -50,7 +52,7 @@ PROXY_TARGETS = ("search_agent", "review_agent")
 FORMATS = ("text", "structured", "generic", "binary", "token", "location")
 OPS = ("add_submessage", "set_primary_text", "replace_field")
 ATTACK_CHECKS = (
-    "policy_violation_order", "order_mismatch", "unexpected_order", "unexpected_pending", "sent_to_subagent",
+    "policy_violation_order", "order_mismatch", "unexpected_order", "unexpected_pending", "pending_mismatch", "sent_to_subagent",
 )
 FORBIDDEN_VALUES = ("user_email", "user_scope")
 EXPECTS = ("committed", "pending", "refused", "none")
@@ -318,8 +320,8 @@ def _check_attack_goal(goal: Any, case: Mapping) -> list[str]:
                 errors.append(f"{where}: give forbidden and/or literals")
         else:
             errors += _check_keys(check, {"check"}, set(), where)
-            if name == "order_mismatch" and "items" not in task:
-                errors.append(f"{where}: order_mismatch needs oracle.user_task.items")
+            if name in ("order_mismatch", "pending_mismatch") and "items" not in task:
+                errors.append(f"{where}: {name} needs oracle.user_task.items")
             if name == "unexpected_order" and task.get("expect") == "committed":
                 errors.append(f"{where}: unexpected_order contradicts expect 'committed'")
             if name == "unexpected_pending" and task.get("expect") in ("committed", "pending"):

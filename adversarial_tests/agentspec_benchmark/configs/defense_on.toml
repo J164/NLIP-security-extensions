@@ -13,8 +13,5 @@ entrypoint = "security_extensions.agentspec.extension:AgentSpecExtension"
 [entities.orchestrator.security]
 ingress = ["agentspec"]
 
-[tool_guards.agentspec_guard]
-entrypoint = "security_extensions.agentspec.guard:AgentSpecToolGuard"
-
-[entities.orchestrator]
-tool_guards = ["agentspec_guard"]
+# The tool guard (security_extensions.agentspec.guard:AgentSpecToolGuard) ships no rules
+# now that the orchestrator applies the user's scope itself, so it is not enabled here.
