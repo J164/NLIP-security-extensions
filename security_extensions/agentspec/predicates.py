@@ -26,8 +26,6 @@ DEFAULT_FIELD_OWNERS = {
     "product_results": "search_agent",
     "review_summary": "review_agent",
     "cart_total": "checkout_agent",
-    "purchase_authorized": "checkout_agent",
-    "requires_confirmation": "checkout_agent",
     "order_id": "checkout_agent",
     "user_scope": "orchestrator",
     "order_status": "orchestrator",
@@ -160,23 +158,11 @@ def at_or_above_confirm_threshold(ctx: ActionContext) -> bool:
     return amount is not None and threshold is not None and amount >= float(threshold)
 
 
-def purchase_authorized(ctx: ActionContext) -> bool:
-    """Order state says checkout authorized the purchase (same test as ``OrderState``)."""
-    field = ctx.state.get("purchase_authorized")
-    return isinstance(field, Mapping) and bool(field.get("authorized"))
-
-
-def confirmation_waived(ctx: ActionContext) -> bool:
-    """Order state says no confirmation is needed (same test as ``OrderState``)."""
-    field = ctx.state.get("requires_confirmation")
-    return isinstance(field, Mapping) and bool(field) and not field.get("required", True)
-
-
 PREDICATES = {
     fn.__name__: fn
     for fn in (
         from_subagent, is_token, has_label, is_privileged_label, is_wellformed_label,
         is_reserved_field, sender_owns_field, forges_provenance,
-        has_amount, exceeds_max_purchase, purchase_authorized, at_or_above_confirm_threshold, confirmation_waived,
+        has_amount, exceeds_max_purchase, at_or_above_confirm_threshold,
     )
 }

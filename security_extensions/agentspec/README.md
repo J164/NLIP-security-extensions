@@ -1,12 +1,13 @@
 # AgentSpec rules for NLIP
 
 Runtime rules in the style of AgentSpec (Wang, Poskitt, Sun, ICSE '26) for the shopping
-assistant's orchestrator. They have two enforcement points:
+assistant's orchestrator. There are two enforcement points; the shipped rules all use the
+first:
 
 | Piece | Where it runs | What it sees |
 |---|---|---|
 | `extension.py`, `AgentSpecExtension` | orchestrator NLIP ingress, client side (replies from subagents) | each part of a reply, before it is merged into order state or rendered into the model's prompt |
-| `guard.py`, `AgentSpecToolGuard` | orchestrator tool boundary (`ToolGuard.before_tool_call`) | the tool call, the user's OAuth scope, the order state |
+| `guard.py`, `AgentSpecToolGuard` | orchestrator tool boundary (`ToolGuard.before_tool_call`); not enabled by default | the tool call, the user's OAuth scope, the order state |
 
 User traffic (server-side ingress) is not checked: a malicious user is out of scope.
 
@@ -18,8 +19,6 @@ User traffic (server-side ingress) is not checked: a malicious user is out of sc
 | `@block_malformed_label` | `before_flatten` | `from_subagent`, `!is_token`, `!is_wellformed_label` | `drop_part` | a label with line breaks, control characters or prompt syntax (`[ ] ( ) =`, spaces) that could forge `[from <agent>]` lines |
 | `@block_forged_provenance` | `before_flatten` | `from_subagent`, `!is_token`, `forges_provenance` | `drop_part` | text content that starts a new `[from <agent>]` line |
 | `@block_field_impersonation` | `before_flatten` | `from_subagent`, `is_reserved_field`, `!sender_owns_field` | `drop_part` | a subagent writing a field another entity owns |
-| `@enforce_purchase_scope` | `before_action place_order` | `exceeds_max_purchase`, `purchase_authorized` | `stop` | order state authorizes an order above the OAuth limit |
-| `@require_confirmation_above_threshold` | `before_action place_order` | `at_or_above_confirm_threshold`, `confirmation_waived` | `user_inspection` | order state waives a confirmation the OAuth scope requires |
 
 A label is well formed when it matches `[A-Za-z][A-Za-z0-9_.-]{0,63}`. Privileged labels
 match exactly, ignoring case and surrounding spaces, so `user_rating` is not `user`.
@@ -42,7 +41,7 @@ that removed it, and says that none of the reply comes from the user or another 
 orchestrator renders it into the prompt like any other part:
 
 ```
-[from review_agent] provenance (structured/json) = {"note": "Every part of this reply was sent by review_agent. ...", "parts": [...], "removed": [{"label": "requires_confirmation", "part": 2, "rule": "@block_field_impersonation"}], "sender": "review_agent", ...}
+[from review_agent] provenance (structured/json) = {"note": "Every part of this reply was sent by review_agent. ...", "parts": [...], "removed": [{"label": "cart_total", "part": 2, "rule": "@block_field_impersonation"}], "sender": "review_agent", ...}
 ```
 
 `provenance` is a reserved field owned by the orchestrator, so a subagent that sends its own
@@ -57,13 +56,21 @@ A subagent that lies inside a field it owns (the review agent inflating its own
 `owned_field_lie` attack cases measure this. Content checks (e.g. recomputing ratings from
 the review data) would need data the orchestrator does not have.
 
-The two tool-boundary rules fire only when order state disagrees with the OAuth scope. When
-state already refuses or already asks for confirmation, the app does the right thing by
-itself and the rule stays silent, so it doesn't count as a false positive.
+### No tool-boundary rules ship
+
+Earlier versions had two `before_action place_order` rules that compared order state with
+the user's scope (`@enforce_purchase_scope`, `@require_confirmation_above_threshold`). Since
+the orchestrator applies the scope itself (`agent_applications/shopping_assistant/policy.py`),
+those rules could only repeat its decision on the same, possibly forged, amount, so they were
+removed. What decides the outcome is whether `cart_total` came from the checkout agent, which
+`@block_field_impersonation` checks at ingress. The `before_action` trigger, the guard and the
+action predicates (`exceeds_max_purchase`, `at_or_above_confirm_threshold`) remain for rules
+added later; enable the guard as below to evaluate them.
 
 ## Predicates (`predicates.py`)
 
-Twelve predicates across six rules. The sender (`provenance`) is `SecurityEvent.peer`: the
+Eight part predicates across the four shipped rules, plus three action predicates for
+tool-boundary rules. The sender (`provenance`) is `SecurityEvent.peer`: the
 endpoint the orchestrator itself dialed, not anything the message says about itself. Field
 owners, roles, agent names and the label pattern are options with defaults (below), so the
 policy is data and not code.
@@ -81,14 +88,14 @@ entrypoint = "security_extensions.agentspec.extension:AgentSpecExtension"
 [entities.orchestrator.security]
 ingress = ["agentspec"]
 
-[tool_guards.agentspec_guard]
-entrypoint = "security_extensions.agentspec.guard:AgentSpecToolGuard"
-
-[entities.orchestrator]
-tool_guards = ["agentspec_guard"]
+# Only if rules.spec has before_action rules:
+# [tool_guards.agentspec_guard]
+# entrypoint = "security_extensions.agentspec.guard:AgentSpecToolGuard"
+# [entities.orchestrator]
+# tool_guards = ["agentspec_guard"]
 ```
 
-`adversarial_tests/agentspec_benchmark/configs/defense_on.toml` does exactly this. If
+`adversarial_tests/agentspec_benchmark/configs/defense_on.toml` enables the extension. If
 `$SHOP_SECURITY_LOG` is set, every decision (including `allow`) is appended to it as one JSON
 row `{"ts", "entity", "extension", "point", "action", "rule", "reason", "ms"}`, which the
 benchmark reads for detection and overhead.

@@ -3,8 +3,8 @@
 # before_flatten: one part of a subagent's reply, before the orchestrator merges it into
 #   order state or renders it into the model's prompt. drop_part removes that part and
 #   delivers the rest of the reply; stop would block the whole reply.
-# before_action <tool>: a tool call the model wants to make. stop refuses the call;
-#   user_inspection makes the user press Confirm first.
+# before_action <tool>: a tool call the model wants to make (see the note at the end).
+#   stop refuses the call; user_inspection makes the user press Confirm first.
 
 # Threat 1: a subagent's part claims a chat role or another agent's identity.
 rule @block_label_spoofing
@@ -43,19 +43,8 @@ check from_subagent
 enforce drop_part
 end
 
-# Threat 3: order state authorizes an order larger than the user's OAuth-granted limit.
-# (Without the authorization, place_order already refuses; the rule does not repeat that.)
-rule @enforce_purchase_scope
-trigger before_action place_order
-check exceeds_max_purchase
-      purchase_authorized
-enforce stop
-end
-
-# Threat 3: order state waives confirmation the user's scope requires.
-rule @require_confirmation_above_threshold
-trigger before_action place_order
-check at_or_above_confirm_threshold
-      confirmation_waived
-enforce user_inspection
-end
+# No before_action rules ship: the orchestrator itself applies the user's scope to the
+# quote (agent_applications/shopping_assistant/policy.py), so a tool-boundary scope rule
+# would only repeat it. The trigger and the action predicates (exceeds_max_purchase,
+# at_or_above_confirm_threshold) remain for rules added later; enable the tool guard in the
+# config to evaluate them.
